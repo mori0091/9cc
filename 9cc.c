@@ -10,6 +10,10 @@
 enum {
   TK_NUM = 256,                 ///< for a number token
   TK_EOF,                       ///< for end-of-file token
+  TK_EQ,                        ///< for == token
+  TK_NE,                        ///< for != token
+  TK_LE,                        ///< for <= token
+  TK_GE,                        ///< for >= token
 };
 
 /** Token type */
@@ -54,7 +58,36 @@ void tokenize(char* p) {
       p++;
       continue;
     }
-    if (*p == '+' || *p == '-' ||
+    if (strncmp(p, "==", 2) == 0) {
+      tokens[i].ty = TK_EQ;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (strncmp(p, "!=", 2) == 0) {
+      tokens[i].ty = TK_NE;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (strncmp(p, "<=", 2) == 0) {
+      tokens[i].ty = TK_LE;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (strncmp(p, ">=", 2) == 0) {
+      tokens[i].ty = TK_GE;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (*p == '<' || *p == '>' ||
+        *p == '+' || *p == '-' ||
         *p == '*' || *p == '/' ||
         *p == '(' || *p == ')') {
       tokens[i].ty = *p;
