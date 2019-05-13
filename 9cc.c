@@ -6,6 +6,63 @@
 #include <stdlib.h>
 #include <string.h>
 
+// ---- utility
+
+typedef struct Vector {
+  void** data;
+  int capacity;
+  int len;
+} Vector;
+
+Vector* new_vector(void)
+{
+  Vector* vec = malloc(sizeof(Vector));
+  vec->data = malloc(sizeof(void*)*16);
+  vec->capacity = 16;
+  vec->len = 0;
+  return vec;
+}
+
+void vec_push(Vector* vec, void* elem)
+{
+  if (vec->capacity == vec->len) {
+    vec->capacity *= 2;
+    vec->data = realloc(vec->data, sizeof(void*) * vec->capacity);
+  }
+  vec->data[vec->len++] = elem;
+}
+
+// ---- (self)test
+
+void expect(int line, int expected, int actual)
+{
+  if (expected == actual) {
+    return;
+  }
+  fprintf(stderr, "%d: %d expected, but got %d\n",
+          line, expected, actual);
+  exit(1);
+}
+
+void runtest(void)
+{
+  Vector* vec = new_vector();
+  expect(__LINE__, 0, vec->len);
+
+  for (int i = 0; i < 100; ++i) {
+    vec_push(vec, (void*)(intptr_t)i);
+  }
+
+  expect(__LINE__, 100, vec->len);
+  expect(__LINE__, 0,  (int)(intptr_t)vec->data[0]);
+  expect(__LINE__, 50, (int)(intptr_t)vec->data[50]);
+  expect(__LINE__, 99, (int)(intptr_t)vec->data[99]);
+
+  printf("OK\n");
+}
+
+// ----
+
 /** values of token types */
 enum {
   TK_NUM = 256,                 ///< for a number token
@@ -314,6 +371,12 @@ int main(int argc, char** argv)
   if (argc != 2) {
     fprintf(stderr, "Illegal number of arguments\n");
     return 1;
+  }
+
+  // self test
+  if (strcmp("--test", argv[1]) == 0) {
+    runtest();
+    return 0;
   }
 
   tokenize(argv[1]);
