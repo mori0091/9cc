@@ -29,7 +29,6 @@ enum {
   ND_EQ,                        ///< for == node
   ND_NE,                        ///< for != node
   ND_LE,                        ///< for <= node
-  ND_GE,                        ///< for >= node
 };
 
 /** Node type - Node of Abstract Syntax Tree (AST) */
@@ -186,10 +185,10 @@ Node* relational(void)
       node = new_node(ND_LE, node, add());
     }
     else if (consume('>')) {
-      node = new_node('>', node, add());
+      node = new_node('<', add(), node);
     }
     else if (consume(TK_GE)) {
-      node = new_node(ND_GE, node, add());
+      node = new_node(ND_LE, add(), node);
     }
     else {
       return node;
@@ -271,6 +270,26 @@ void gen(Node* node)
   printf("  pop rax\n");
 
   switch (node->ty) {
+  case ND_EQ:
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_NE:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case '<':
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LE:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
+    break;
   case '+':
     printf("  add rax, rdi\n");
     break;
