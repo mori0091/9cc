@@ -26,6 +26,10 @@ typedef struct Token {
 /** values of Node types */
 enum {
   ND_NUM = 256,                 ///< for a number node
+  ND_EQ,                        ///< for == node
+  ND_NE,                        ///< for != node
+  ND_LE,                        ///< for <= node
+  ND_GE,                        ///< for >= node
 };
 
 /** Node type - Node of Abstract Syntax Tree (AST) */
@@ -141,10 +145,57 @@ int consume(int ty)
 
 // --- parsers
 
+Node* expr(void);
+Node* equality(void);
+Node* relational(void);
 Node* add(void);
 Node* mul(void);
 Node* unary(void);
 Node* term(void);
+
+Node* expr(void)
+{
+  Node* node = equality();
+  return node;
+}
+
+Node* equality(void)
+{
+  Node* node = relational();
+  for (;;) {
+    if (consume(TK_EQ)) {
+      node = new_node(ND_EQ, node, relational());
+    }
+    else if (consume(TK_NE)) {
+      node = new_node(ND_NE, node, relational());
+    }
+    else {
+      return node;
+    }
+  }
+}
+
+Node* relational(void)
+{
+  Node* node = add();
+  for (;;) {
+    if (consume('<')) {
+      node = new_node('<', node, add());
+    }
+    else if (consume(TK_LE)) {
+      node = new_node(ND_LE, node, add());
+    }
+    else if (consume('>')) {
+      node = new_node('>', node, add());
+    }
+    else if (consume(TK_GE)) {
+      node = new_node(ND_GE, node, add());
+    }
+    else {
+      return node;
+    }
+  }
+}
 
 Node* add(void)
 {
@@ -247,7 +298,7 @@ int main(int argc, char** argv)
   }
 
   tokenize(argv[1]);
-  Node* node = add();
+  Node* node = expr();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
