@@ -10,6 +10,10 @@
 enum {
   TK_NUM = 256,                 ///< for a number token
   TK_EOF,                       ///< for end-of-file token
+  TK_EQ,                        ///< for == token
+  TK_NE,                        ///< for != token
+  TK_LE,                        ///< for <= token
+  TK_GE,                        ///< for >= token
 };
 
 /** Token type */
@@ -22,6 +26,9 @@ typedef struct Token {
 /** values of Node types */
 enum {
   ND_NUM = 256,                 ///< for a number node
+  ND_EQ,                        ///< for == node
+  ND_NE,                        ///< for != node
+  ND_LE,                        ///< for <= node
 };
 
 /** Node type - Node of Abstract Syntax Tree (AST) */
@@ -54,7 +61,36 @@ void tokenize(char* p) {
       p++;
       continue;
     }
-    if (*p == '+' || *p == '-' ||
+    if (strncmp(p, "==", 2) == 0) {
+      tokens[i].ty = TK_EQ;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (strncmp(p, "!=", 2) == 0) {
+      tokens[i].ty = TK_NE;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (strncmp(p, "<=", 2) == 0) {
+      tokens[i].ty = TK_LE;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (strncmp(p, ">=", 2) == 0) {
+      tokens[i].ty = TK_GE;
+      tokens[i].input = p;
+      i++;
+      p+=2;
+      continue;
+    }
+    if (*p == '<' || *p == '>' ||
+        *p == '+' || *p == '-' ||
         *p == '*' || *p == '/' ||
         *p == '(' || *p == ')') {
       tokens[i].ty = *p;
@@ -108,10 +144,57 @@ int consume(int ty)
 
 // --- parsers
 
+Node* expr(void);
+Node* equality(void);
+Node* relational(void);
 Node* add(void);
 Node* mul(void);
 Node* unary(void);
 Node* term(void);
+
+Node* expr(void)
+{
+  Node* node = equality();
+  return node;
+}
+
+Node* equality(void)
+{
+  Node* node = relational();
+  for (;;) {
+    if (consume(TK_EQ)) {
+      node = new_node(ND_EQ, node, relational());
+    }
+    else if (consume(TK_NE)) {
+      node = new_node(ND_NE, node, relational());
+    }
+    else {
+      return node;
+    }
+  }
+}
+
+Node* relational(void)
+{
+  Node* node = add();
+  for (;;) {
+    if (consume('<')) {
+      node = new_node('<', node, add());
+    }
+    else if (consume(TK_LE)) {
+      node = new_node(ND_LE, node, add());
+    }
+    else if (consume('>')) {
+      node = new_node('<', add(), node);
+    }
+    else if (consume(TK_GE)) {
+      node = new_node(ND_LE, add(), node);
+    }
+    else {
+      return node;
+    }
+  }
+}
 
 Node* add(void)
 {
@@ -187,6 +270,26 @@ void gen(Node* node)
   printf("  pop rax\n");
 
   switch (node->ty) {
+  case ND_EQ:
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_NE:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case '<':
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LE:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
+    break;
   case '+':
     printf("  add rax, rdi\n");
     break;
@@ -214,7 +317,7 @@ int main(int argc, char** argv)
   }
 
   tokenize(argv[1]);
-  Node* node = add();
+  Node* node = expr();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
