@@ -6,6 +6,63 @@
 #include <stdlib.h>
 #include <string.h>
 
+// ---- utility
+
+typedef struct Vector {
+  void** data;
+  int capacity;
+  int len;
+} Vector;
+
+Vector* new_vector(void)
+{
+  Vector* vec = malloc(sizeof(Vector));
+  vec->data = malloc(sizeof(void*)*16);
+  vec->capacity = 16;
+  vec->len = 0;
+  return vec;
+}
+
+void vec_push(Vector* vec, void* elem)
+{
+  if (vec->capacity == vec->len) {
+    vec->capacity *= 2;
+    vec->data = realloc(vec->data, sizeof(void*) * vec->capacity);
+  }
+  vec->data[vec->len++] = elem;
+}
+
+// ---- (self)test
+
+void expect(int line, int expected, int actual)
+{
+  if (expected == actual) {
+    return;
+  }
+  fprintf(stderr, "%d: %d expected, but got %d\n",
+          line, expected, actual);
+  exit(1);
+}
+
+void runtest(void)
+{
+  Vector* vec = new_vector();
+  expect(__LINE__, 0, vec->len);
+
+  for (int i = 0; i < 100; ++i) {
+    vec_push(vec, (void*)(intptr_t)i);
+  }
+
+  expect(__LINE__, 100, vec->len);
+  expect(__LINE__, 0,  (int)(intptr_t)vec->data[0]);
+  expect(__LINE__, 50, (int)(intptr_t)vec->data[50]);
+  expect(__LINE__, 99, (int)(intptr_t)vec->data[99]);
+
+  printf("OK\n");
+}
+
+// ----
+
 /** values of token types */
 enum {
   TK_NUM = 256,                 ///< for a number token
@@ -39,8 +96,7 @@ typedef struct Node {
   int val;                      ///< value of node (if ty == ND_NUM)
 } Node;
 
-#define MAX_TOKENS (100)
-Token tokens[MAX_TOKENS];       ///< List of tokens
+Vector* tokens = NULL;          ///< List of tokens
 int pos = 0;                    ///< Index of the next token
 
 /** Print error message then exit with error code. */
@@ -55,37 +111,40 @@ void error(const char *fmt, ...) {
 
 /** Construct list of tokens from a string. */
 void tokenize(char* p) {
-  int i = 0;
   while (*p) {
     if (isspace(*p)) {
       p++;
       continue;
     }
     if (strncmp(p, "==", 2) == 0) {
-      tokens[i].ty = TK_EQ;
-      tokens[i].input = p;
-      i++;
+      Token* token = malloc(sizeof(Token));
+      token->ty = TK_EQ;
+      token->input = p;
+      vec_push(tokens, token);
       p+=2;
       continue;
     }
     if (strncmp(p, "!=", 2) == 0) {
-      tokens[i].ty = TK_NE;
-      tokens[i].input = p;
-      i++;
+      Token* token = malloc(sizeof(Token));
+      token->ty = TK_NE;
+      token->input = p;
+      vec_push(tokens, token);
       p+=2;
       continue;
     }
     if (strncmp(p, "<=", 2) == 0) {
-      tokens[i].ty = TK_LE;
-      tokens[i].input = p;
-      i++;
+      Token* token = malloc(sizeof(Token));
+      token->ty = TK_LE;
+      token->input = p;
+      vec_push(tokens, token);
       p+=2;
       continue;
     }
     if (strncmp(p, ">=", 2) == 0) {
-      tokens[i].ty = TK_GE;
-      tokens[i].input = p;
-      i++;
+      Token* token = malloc(sizeof(Token));
+      token->ty = TK_GE;
+      token->input = p;
+      vec_push(tokens, token);
       p+=2;
       continue;
     }
@@ -93,24 +152,28 @@ void tokenize(char* p) {
         *p == '+' || *p == '-' ||
         *p == '*' || *p == '/' ||
         *p == '(' || *p == ')') {
-      tokens[i].ty = *p;
-      tokens[i].input = p;
-      i++;
+      Token* token = malloc(sizeof(Token));
+      token->ty = *p;
+      token->input = p;
+      vec_push(tokens, token);
       p++;
       continue;
     }
     if (isdigit(*p)) {
-      tokens[i].ty = TK_NUM;
-      tokens[i].input = p;
-      tokens[i].val = strtol(p, &p, 10);
-      i++;
+      Token* token = malloc(sizeof(Token));
+      token->ty = TK_NUM;
+      token->input = p;
+      token->val = strtol(p, &p, 10);
+      vec_push(tokens, token);
       continue;
     }
     error("Cannot tokenize: %s", p);
     exit(1);
   }
-  tokens[i].ty = TK_EOF;
-  tokens[i].input = p;
+  Token* token = malloc(sizeof(Token));
+  token->ty = TK_EOF;
+  token->input = p;
+  vec_push(tokens, token);
 }
 
 /** Create a binary operator node. */
@@ -135,7 +198,8 @@ Node* new_node_num(int val)
 /** Consume the next token if it was expected token type. */
 int consume(int ty)
 {
-  if (tokens[pos].ty != ty) {
+  Token* token = (Token*)tokens->data[pos];
+  if (token->ty != ty) {
     return 0;
   }
   pos++;
@@ -244,14 +308,16 @@ Node* term(void)
   if (consume('(')) {
     Node* node = add();
     if (!consume(')')) {
-      error("Paren not closed: %s", tokens[pos].input);
+      error("Paren not closed: %s",
+            ((Token*)tokens->data[pos])->input);
     }
     return node;
   }
-  if (tokens[pos].ty == TK_NUM) {
-    return new_node_num(tokens[pos++].val);
+  if (((Token*)tokens->data[pos])->ty == TK_NUM) {
+    return new_node_num(((Token*)tokens->data[pos++])->val);
   }
-  error("A token neither a number nor parens: %s", tokens[pos].input);
+  error("A token neither a number nor parens: %s",
+        ((Token*)tokens->data[pos])->input);
 }
 
 // ---- code generator
@@ -316,6 +382,13 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  // self test
+  if (strcmp("--test", argv[1]) == 0) {
+    runtest();
+    return 0;
+  }
+
+  tokens = new_vector();
   tokenize(argv[1]);
   Node* node = expr();
 
