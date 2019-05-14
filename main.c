@@ -1,10 +1,9 @@
-/* -*- mode:c++; coding:utf-8-unix -*- */
+/* -*- coding:utf-8-unix -*- */
 
 #include "9cc.h"
 
 /** Print error message then exit with error code. */
-noreturn void error(const char *fmt, ...)
-{
+noreturn void error(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   fprintf(stderr, "error:");
@@ -15,8 +14,7 @@ noreturn void error(const char *fmt, ...)
 
 // ----
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "Illegal number of arguments\n");
     return 1;
@@ -44,7 +42,7 @@ int main(int argc, char** argv)
   //   allocate 26 local variables 'a'-'z'
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 208\n");   // 208 bytes = 8 bytes * 26
+  printf("  sub rsp, 208\n"); // 208 bytes = 8 bytes * 26
 
   // - generate code for each statement
   for (int i = 0; code[i]; i++) {
@@ -57,7 +55,7 @@ int main(int argc, char** argv)
   //   deallocate 26 local variables 'a'-'z'
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
-  //   note: 'rax' has already the result of the last expression, 
+  //   note: 'rax' has already the result of the last expression,
   //   and the value of 'rax' shall be the return value.
   printf("  ret\n");
   return 0;

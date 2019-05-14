@@ -1,21 +1,20 @@
-/* -*- mode:c++; coding:utf-8-unix -*- */
+/* -*- coding:utf-8-unix -*- */
 
 #include "9cc.h"
 
 // ---- tokenizer
 
-Vector* tokens = NULL;          ///< List of tokens
-int pos = 0;                    ///< Index of the next token
+Vector *tokens = NULL; ///< List of tokens
+int pos = 0;           ///< Index of the next token
 
-void tokenize(char* p)
-{
+void tokenize(char *p) {
   while (*p) {
     if (isspace(*p)) {
       p++;
       continue;
     }
     if (islower(*p)) {
-      Token* token = malloc(sizeof(Token));
+      Token *token = malloc(sizeof(Token));
       token->ty = TK_IDENT;
       token->input = p;
       vec_push(tokens, token);
@@ -23,44 +22,40 @@ void tokenize(char* p)
       continue;
     }
     if (strncmp(p, "==", 2) == 0) {
-      Token* token = malloc(sizeof(Token));
+      Token *token = malloc(sizeof(Token));
       token->ty = TK_EQ;
       token->input = p;
       vec_push(tokens, token);
-      p+=2;
+      p += 2;
       continue;
     }
     if (strncmp(p, "!=", 2) == 0) {
-      Token* token = malloc(sizeof(Token));
+      Token *token = malloc(sizeof(Token));
       token->ty = TK_NE;
       token->input = p;
       vec_push(tokens, token);
-      p+=2;
+      p += 2;
       continue;
     }
     if (strncmp(p, "<=", 2) == 0) {
-      Token* token = malloc(sizeof(Token));
+      Token *token = malloc(sizeof(Token));
       token->ty = TK_LE;
       token->input = p;
       vec_push(tokens, token);
-      p+=2;
+      p += 2;
       continue;
     }
     if (strncmp(p, ">=", 2) == 0) {
-      Token* token = malloc(sizeof(Token));
+      Token *token = malloc(sizeof(Token));
       token->ty = TK_GE;
       token->input = p;
       vec_push(tokens, token);
-      p+=2;
+      p += 2;
       continue;
     }
-    if (*p == ';' ||
-        *p == '=' ||
-        *p == '<' || *p == '>' ||
-        *p == '+' || *p == '-' ||
-        *p == '*' || *p == '/' ||
-        *p == '(' || *p == ')') {
-      Token* token = malloc(sizeof(Token));
+    if (*p == ';' || *p == '=' || *p == '<' || *p == '>' || *p == '+' ||
+        *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
+      Token *token = malloc(sizeof(Token));
       token->ty = *p;
       token->input = p;
       vec_push(tokens, token);
@@ -68,7 +63,7 @@ void tokenize(char* p)
       continue;
     }
     if (isdigit(*p)) {
-      Token* token = malloc(sizeof(Token));
+      Token *token = malloc(sizeof(Token));
       token->ty = TK_NUM;
       token->input = p;
       token->val = strtol(p, &p, 10);
@@ -78,7 +73,7 @@ void tokenize(char* p)
     error("Cannot tokenize: %s", p);
     exit(1);
   }
-  Token* token = malloc(sizeof(Token));
+  Token *token = malloc(sizeof(Token));
   token->ty = TK_EOF;
   token->input = p;
   vec_push(tokens, token);
@@ -87,9 +82,8 @@ void tokenize(char* p)
 // --- Abstract Syntax Tree (AST)
 
 /** Create a binary operator node. */
-Node* new_node(int ty, Node* lhs, Node* rhs)
-{
-  Node* node = (Node*) malloc(sizeof(Node));
+Node *new_node(int ty, Node *lhs, Node *rhs) {
+  Node *node = (Node *)malloc(sizeof(Node));
   node->ty = ty;
   node->lhs = lhs;
   node->rhs = rhs;
@@ -97,27 +91,24 @@ Node* new_node(int ty, Node* lhs, Node* rhs)
 }
 
 /** Create a number node. */
-Node* new_node_num(int val)
-{
-  Node* node = (Node*) malloc(sizeof(Node));
+Node *new_node_num(int val) {
+  Node *node = (Node *)malloc(sizeof(Node));
   node->ty = ND_NUM;
   node->val = val;
   return node;
 }
 
 /** Create a identifier node. */
-Node* new_node_ident(char name)
-{
-  Node* node = (Node*) malloc(sizeof(Node));
+Node *new_node_ident(char name) {
+  Node *node = (Node *)malloc(sizeof(Node));
   node->ty = ND_IDENT;
   node->name = name;
   return node;
 }
 
 /** Consume the next token if it was expected token type. */
-int consume(int ty)
-{
-  Token* token = (Token*)tokens->data[pos];
+int consume(int ty) {
+  Token *token = (Token *)tokens->data[pos];
   if (token->ty != ty) {
     return 0;
   }
@@ -127,114 +118,95 @@ int consume(int ty)
 
 // --- parsers
 
-Node* code[100];
+Node *code[100];
 
-void program(void)
-{
+void program(void) {
   int i = 0;
-  while (((Token*)tokens->data[pos])->ty != TK_EOF) {
+  while (((Token *)tokens->data[pos])->ty != TK_EOF) {
     code[i++] = stmt();
   }
   code[i] = NULL;
 }
 
-Node* stmt(void)
-{
-  Node* node = expr();
+Node *stmt(void) {
+  Node *node = expr();
   if (!consume(';')) {
-    Token* token = (Token*)tokens->data[pos];
+    Token *token = (Token *)tokens->data[pos];
     error("';' expected but was: %s", token->input);
   }
   return node;
 }
 
-Node* expr(void)
-{
-  Node* node = assign();
+Node *expr(void) {
+  Node *node = assign();
   return node;
 }
 
-Node* assign(void)
-{
-  Node* node = equality();
+Node *assign(void) {
+  Node *node = equality();
   if (consume('=')) {
     node = new_node('=', node, assign());
   }
   return node;
 }
 
-Node* equality(void)
-{
-  Node* node = relational();
+Node *equality(void) {
+  Node *node = relational();
   for (;;) {
     if (consume(TK_EQ)) {
       node = new_node(ND_EQ, node, relational());
-    }
-    else if (consume(TK_NE)) {
+    } else if (consume(TK_NE)) {
       node = new_node(ND_NE, node, relational());
-    }
-    else {
+    } else {
       return node;
     }
   }
 }
 
-Node* relational(void)
-{
-  Node* node = add();
+Node *relational(void) {
+  Node *node = add();
   for (;;) {
     if (consume('<')) {
       node = new_node('<', node, add());
-    }
-    else if (consume(TK_LE)) {
+    } else if (consume(TK_LE)) {
       node = new_node(ND_LE, node, add());
-    }
-    else if (consume('>')) {
+    } else if (consume('>')) {
       node = new_node('<', add(), node);
-    }
-    else if (consume(TK_GE)) {
+    } else if (consume(TK_GE)) {
       node = new_node(ND_LE, add(), node);
-    }
-    else {
+    } else {
       return node;
     }
   }
 }
 
-Node* add(void)
-{
-  Node* node = mul();
+Node *add(void) {
+  Node *node = mul();
   for (;;) {
     if (consume('+')) {
       node = new_node('+', node, mul());
-    }
-    else if (consume('-')) {
+    } else if (consume('-')) {
       node = new_node('-', node, mul());
-    }
-    else {
+    } else {
       return node;
     }
   }
 }
 
-Node* mul(void)
-{
-  Node* node = unary();
+Node *mul(void) {
+  Node *node = unary();
   for (;;) {
     if (consume('*')) {
       node = new_node('*', node, unary());
-    }
-    else if (consume('/')) {
+    } else if (consume('/')) {
       node = new_node('/', node, unary());
-    }
-    else {
+    } else {
       return node;
     }
   }
 }
 
-Node* unary(void)
-{
+Node *unary(void) {
   if (consume('+')) {
     return term();
   }
@@ -244,23 +216,22 @@ Node* unary(void)
   return term();
 }
 
-Node* term(void)
-{
-  Token* token = (Token*)tokens->data[pos];
+Node *term(void) {
+  Token *token = (Token *)tokens->data[pos];
   if (consume('(')) {
-    Node* node = expr();
+    Node *node = expr();
     if (!consume(')')) {
       error("Paren not closed: %s", token->input);
     }
     return node;
   }
   if (token->ty == TK_NUM) {
-    Node* node = new_node_num(token->val);
+    Node *node = new_node_num(token->val);
     pos++;
     return node;
   }
   if (token->ty == TK_IDENT) {
-    Node* node = new_node_ident(*token->input);
+    Node *node = new_node_ident(*token->input);
     pos++;
     return node;
   }

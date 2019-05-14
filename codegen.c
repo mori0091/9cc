@@ -1,11 +1,10 @@
-/* -*- mode:c++; coding:utf-8-unix -*- */
+/* -*- coding:utf-8-unix -*- */
 
 #include "9cc.h"
 
 // ---- code generator
 
-void gen_lval(Node* node)
-{
+void gen_lval(Node *node) {
   if (node->ty != ND_IDENT) {
     error("lvalue of assignment is not a variable");
   }
@@ -15,8 +14,7 @@ void gen_lval(Node* node)
   printf("  push rax\n");
 }
 
-void gen(Node* node)
-{
+void gen(Node *node) {
   // case 1. evaluate number
   if (node->ty == ND_NUM) {
     printf("  push %d\n", node->val);
