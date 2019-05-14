@@ -66,6 +66,7 @@ enum {
       ND_EQ,                        ///< for == node
       ND_NE,                        ///< for != node
       ND_LE,                        ///< for <= node
+      ND_IDENT,                     ///< for identifier ndoe
 };
 
 /** Node type - Node of Abstract Syntax Tree (AST) */
@@ -74,6 +75,7 @@ typedef struct Node {
   struct Node* lhs;             ///< left-hand node
   struct Node* rhs;             ///< right-hand node
   int val;                      ///< value of node (if ty == ND_NUM)
+  char name;                    ///< name of identifier (if ty == ND_INDENT)
 } Node;
 
 /** Create a binary operator node. */
@@ -82,13 +84,33 @@ Node* new_node(int ty, Node* lhs, Node* rhs);
 /** Create a number node. */
 Node* new_node_num(int val);
 
+/** Create a identifier node. */
+Node* new_node_ident(char name);
+
 /** Consume the next token if it was expected token type. */
 int consume(int ty);
 
 
 // ---- parsers
 
+extern Node* code[100];         ///< List of statement nodes
+
+// ~~~BNF
+//    program = { stmt }
+//       stmt = expr ";"
+//       expr = assign
+//     assign = equality { "=" assign }
+//   equality = relational { ( "==" | "!=" ) relational }
+// relational = add { ( "<" | "<=" | ">" | ">=" ) add }
+//        add = mul { ( "+" | "-" ) mul }
+//        mul = unary { ( "*" | "/" ) unary }
+//      unary = [ "+" | "-" ] term
+//       term = num | ident | "(" expr ")"
+// ~~~
+void program(void);
+Node* stmt(void);
 Node* expr(void);
+Node* assign(void);
 Node* equality(void);
 Node* relational(void);
 Node* add(void);
@@ -99,4 +121,5 @@ Node* term(void);
 
 // ---- code generator
 
+void gen_lval(Node* node);
 void gen(Node* node);

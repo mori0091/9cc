@@ -54,7 +54,9 @@ void tokenize(char* p)
       p+=2;
       continue;
     }
-    if (*p == '<' || *p == '>' ||
+    if (*p == ';' ||
+        *p == '=' ||
+        *p == '<' || *p == '>' ||
         *p == '+' || *p == '-' ||
         *p == '*' || *p == '/' ||
         *p == '(' || *p == ')') {
@@ -103,6 +105,15 @@ Node* new_node_num(int val)
   return node;
 }
 
+/** Create a identifier node. */
+Node* new_node_ident(char name)
+{
+  Node* node = (Node*) malloc(sizeof(Node));
+  node->ty = ND_IDENT;
+  node->name = name;
+  return node;
+}
+
 /** Consume the next token if it was expected token type. */
 int consume(int ty)
 {
@@ -116,9 +127,39 @@ int consume(int ty)
 
 // --- parsers
 
+Node* code[100];
+
+void program(void)
+{
+  int i = 0;
+  while (((Token*)tokens->data[pos])->ty != TK_EOF) {
+    code[i++] = stmt();
+  }
+  code[i] = NULL;
+}
+
+Node* stmt(void)
+{
+  Node* node = expr();
+  if (!consume(';')) {
+    Token* token = (Token*)tokens->data[pos];
+    error("';' expected but was: %s", token->input);
+  }
+  return node;
+}
+
 Node* expr(void)
 {
+  Node* node = assign();
+  return node;
+}
+
+Node* assign(void)
+{
   Node* node = equality();
+  if (consume('=')) {
+    node = new_node('=', node, assign());
+  }
   return node;
 }
 
@@ -205,17 +246,24 @@ Node* unary(void)
 
 Node* term(void)
 {
+  Token* token = (Token*)tokens->data[pos];
   if (consume('(')) {
     Node* node = expr();
     if (!consume(')')) {
-      error("Paren not closed: %s",
-            ((Token*)tokens->data[pos])->input);
+      error("Paren not closed: %s", token->input);
     }
     return node;
   }
-  if (((Token*)tokens->data[pos])->ty == TK_NUM) {
-    return new_node_num(((Token*)tokens->data[pos++])->val);
+  if (token->ty == TK_NUM) {
+    Node* node = new_node_num(token->val);
+    pos++;
+    return node;
   }
-  error("A token neither a number nor parens: %s",
-        ((Token*)tokens->data[pos])->input);
+  if (token->ty == TK_IDENT) {
+    Node* node = new_node_ident(*token->input);
+    pos++;
+    return node;
+  }
+  error("A token neither a number, an identifier, nor parens: %s",
+        token->input);
 }
