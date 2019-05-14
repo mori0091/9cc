@@ -206,7 +206,7 @@ Node* unary(void)
 Node* term(void)
 {
   if (consume('(')) {
-    Node* node = add();
+    Node* node = expr();
     if (!consume(')')) {
       error("Paren not closed: %s",
             ((Token*)tokens->data[pos])->input);
