@@ -1,4 +1,4 @@
-/* mode:c++; coding:utf-8-unix */
+/* -*- mode:c++; coding:utf-8-unix -*- */
 
 #include "9cc.h"
 
