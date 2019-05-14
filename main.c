@@ -1,4 +1,4 @@
-/* mode:c++; coding:utf-8-unix */
+/* -*- mode:c++; coding:utf-8-unix -*- */
 
 #include "9cc.h"
 
@@ -29,16 +29,36 @@ int main(int argc, char** argv)
   }
 
   tokens = new_vector();
-  tokenize(argv[1]);
-  Node* node = expr();
 
+  // tokenize, then parse
+  tokenize(argv[1]);
+  program();
+
+  // generate assembly code
+  // - header
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
 
-  gen(node);
+  // - prologue
+  //   allocate 26 local variables 'a'-'z'
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, 208\n");   // 208 bytes = 8 bytes * 26
 
-  printf("  pop rax\n");
+  // - generate code for each statement
+  for (int i = 0; code[i]; i++) {
+    gen(code[i]);
+    // pop result of the last expression of the statement.
+    printf("  pop rax\n");
+  }
+
+  // - epilogue
+  //   deallocate 26 local variables 'a'-'z'
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  //   note: 'rax' has already the result of the last expression, 
+  //   and the value of 'rax' shall be the return value.
   printf("  ret\n");
   return 0;
 }
