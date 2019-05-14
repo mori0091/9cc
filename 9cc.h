@@ -41,6 +41,7 @@ enum {
       TK_NE,                        ///< for != token
       TK_LE,                        ///< for <= token
       TK_GE,                        ///< for >= token
+      TK_IDENT,                     ///< for identifier token
 };
 
 /** Token type */

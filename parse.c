@@ -14,6 +14,14 @@ void tokenize(char* p)
       p++;
       continue;
     }
+    if (islower(*p)) {
+      Token* token = malloc(sizeof(Token));
+      token->ty = TK_IDENT;
+      token->input = p;
+      vec_push(tokens, token);
+      p++;
+      continue;
+    }
     if (strncmp(p, "==", 2) == 0) {
       Token* token = malloc(sizeof(Token));
       token->ty = TK_EQ;
